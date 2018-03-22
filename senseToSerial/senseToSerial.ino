@@ -1,10 +1,11 @@
-//Ultrasonic Parking Assistant
 //measures distance using ultrasonic sensor
 //displays distance to serial
 
 #include "display.h"
 
-
+#define CAR_DISTANCE_CLOSEST 25L
+#define CAR_DISTANCE_FURTHEST 30L
+#define CAR_DISTANCE_POWERSAVE 200L
 
 // Ultrasonic HC-SR04 unit interface
 //define pins here
@@ -26,6 +27,9 @@
 #define MATRIXD 9
 #define MATRIXFREQ 1500L  // trigger draw every Hz/1500 cycles per second.
 
+
+
+
 byte matrixTopData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. top row.
 byte matrixBottomData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. bottom row.
 
@@ -42,8 +46,6 @@ void setup(){
 void loop(){
   long d;               //for distance
   d=usonic(17400)/58;   //convert ping time to distance in cm
-  if(d==0){d=300;}      //sometimes returns 0 when not in range
-  debugdistance(d);
   updatedisplay(d);
   delay(500);
 }
@@ -90,11 +92,78 @@ ISR(TIMER1_COMPA_vect) {    //gets triggered FREQ times/second
 
 void updatedisplay(long d)
 {
+
+#define CAR_DISTANCE_CLOSEST 25L
+#define CAR_DISTANCE_FURTHEST 30L
+#define CAR_DISTANCE_POWERSAVE 200L
+  
+  if (d < CAR_DISTANCE_CLOSEST)
+  {
+    updatedisplay_tooclose(matrixTopData,CAR_DISTANCE_CLOSEST - d);
+    updatedisplay_reading(matrixBottomData,CAR_DISTANCE_CLOSEST - d);
+  }
+  else if (d > CAR_DISTANCE_POWERSAVE)
+  {
+    updatedisplay_blank(matrixTopData);
+    updatedisplay_blank(matrixBottomData);    
+  }
+  else if (d > CAR_DISTANCE_FURTHEST)
+  {
+    updatedisplay_toofar(matrixTopData,d - CAR_DISTANCE_FURTHEST);
+    updatedisplay_reading(matrixBottomData,d - CAR_DISTANCE_FURTHEST);  
+  }
+  else
+  {
+    updatedisplay_ok(matrixTopData,matrixBottomData);  
+  }
+  
+}
+
+void updatedisplay_blank(byte* row)
+{
+  memset(row,0,16);
+}
+
+void updatedisplay_ok(byte* high, byte* low)
+{
+    memcpy(high,&LCD8x16_OK_HIGH,16);
+    memcpy(low,&LCD8x16_OK_LOW,16);
+}
+
+void updatedisplay_tooclose(byte* row, long d)
+{
+    memcpy(row,&LCD8x4_B,4);
+    memcpy(row+4,&LCD8x4_A,4);
+    memcpy(row+8,&LCD8x4_C,4);
+    memcpy(row+12,&LCD8x4_K,4);
+
+}
+
+void updatedisplay_toofar(byte* row, long d)
+{
+    // display a car moving into the leftmost 12 columns, and a wall on the right
+    memset(row,0,16);
+
+    long colsToShow = 12 - (d / 10);
+
+    debuglong(colsToShow);
+    
+    if (colsToShow > 0)
+    {
+      memcpy(row,&LCD_8x12_CAR[12-colsToShow],colsToShow);
+    }
+    memcpy(row+14,&LCD_8x2_WALL,2);
+}
+
+void updatedisplay_reading(byte* row, long d)
+{  
+  memset(row,0,16);
+  
   if (d>999)
   {
-    memcpy(matrixTopData,&LCD8x5_F,5);
-    memcpy(matrixTopData+5,&LCD8x5_A,5);
-    memcpy(matrixTopData+10,&LCD8x5_R,5);
+    memcpy(row,&LCD8x4_F,4);
+    memcpy(row+5,&LCD8x4_A,4);
+    memcpy(row+10,&LCD8x4_R,4);
   }
   else
   {
@@ -103,64 +172,65 @@ void updatedisplay(long d)
     int tens = (d - (100 * hundreds)) / 10;
 
     if (hundreds == 0)
-      memcpy(matrixTopData,&LCD8x5_BLANK,5);
+      setBlank8x4(row+1);
     else
-      setChar8x5(matrixTopData,hundreds);
+      setDigit8x4(row+1,hundreds);
     
     if (hundreds == 0 && tens == 0)
-      memcpy(matrixTopData+5,&LCD8x5_BLANK,5);
+      setBlank8x4(row+6);
     else
-      setChar8x5(matrixTopData+5,tens);
+      setDigit8x4(row+6,tens);
 
-    setChar8x5(matrixTopData+10,ones);
-    
+    setDigit8x4(row+11,ones);    
   }
     
 }
 
+void setBlank8x4(byte* data)
+{
+  memcpy(data,&LCD8x4_BLANK,4);
+}
+
 //
-// set the 
+// copy the bytes for the required digit into the display array starting at the given location
 //
-void setChar8x5(byte* data,int digit)
+void setDigit8x4(byte* data,int digit)
 {
   
   switch (digit)
   {
-    case -1:
-      memcpy(data,&LCD8x5_BLANK,5);
-      break;
     case 0:
-      memcpy(data,&LCD8x5_0,5);
+      memcpy(data,&LCD8x4_0,4);
       break;
     case 1:
-      memcpy(data,&LCD8x5_1,5);
+      memcpy(data,&LCD8x4_1,4);
       break;
     case 2:
-      memcpy(data,&LCD8x5_2,5);
+      memcpy(data,&LCD8x4_2,4);
       break;
     case 3:
-      memcpy(data,&LCD8x5_3,5);
+      memcpy(data,&LCD8x4_3,4);
       break;
     case 4:
-      memcpy(data,&LCD8x5_4,5);
+      memcpy(data,&LCD8x4_4,4);
       break;
     case 5:
-      memcpy(data,&LCD8x5_5,5);
+      memcpy(data,&LCD8x4_5,4);
       break;
     case 6:
-      memcpy(data,&LCD8x5_6,5);
+      memcpy(data,&LCD8x4_6,4);
       break;
     case 7:
-      memcpy(data,&LCD8x5_7,5);
+      memcpy(data,&LCD8x4_7,4);
       break;
     case 8:
-      memcpy(data,&LCD8x5_8,5);
+      memcpy(data,&LCD8x4_8,4);
       break;
     case 9:
-      memcpy(data,&LCD8x5_9,5);
+      memcpy(data,&LCD8x4_9,4);
       break;
     default:
-      memcpy(data,&LCD8x5_SAD,5);
+      memcpy(data,&LCD8x4_SAD,4);
       break;
   }
   
@@ -175,7 +245,7 @@ void debugsetup(){
   Serial.begin(9600);
 }
 
-void debugdistance(long d){
+void debuglong(long d){
   Serial.println(d);  
 }
 
