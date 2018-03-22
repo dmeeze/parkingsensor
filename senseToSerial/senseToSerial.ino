@@ -39,7 +39,7 @@
 #define MATRIXB 7       
 #define MATRIXC 8
 #define MATRIXD 9
-#define MATRIXFREQ 1500L  // trigger draw every Hz/1500 cycles per second.
+#define MATRIXFREQ 1L  // trigger draw every Hz/1500 cycles per second.
 
 //byte matrixTopData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. top row.
 
@@ -61,8 +61,26 @@ SAD_1F,
 SAD_1G,
 SAD_1H};
 
+byte matrixBottomData[16]={
+SAD_1A,
+SAD_1B,
+SAD_1C,
+SAD_1D,
+SAD_1E,
+SAD_1F,
+SAD_1G,
+SAD_1H,
+HAPPY_1A,
+HAPPY_1B,
+HAPPY_1C,
+HAPPY_1D,
+HAPPY_1E,
+HAPPY_1F,
+HAPPY_1G,
+HAPPY_1H
+};
 
-byte matrixBottomData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. bottom row.
+
 byte matrixscan=0;                                                //column being scanned
 
 
@@ -100,7 +118,7 @@ void matrixsetup(){
   TCCR1A = 0;                       // 
   TCCR1B = _BV(WGM12) | _BV(CS10);  // WGM12:CTC mode (clear timer on complete), CS10:no clock scaling.
   TCNT1 = 0;                        // actual timer value init 0
-  OCR1A = F_CPU / MATRIXFREQ;       // F_CPU is Hz (cycles/sec)
+  OCR1A = F_CPU;// / MATRIXFREQ;       // F_CPU is Hz (cycles/sec)
   TIMSK1 = _BV(OCIE1A);             // enable TIMER1_COMPA_vect interrupt
 }
 
@@ -113,7 +131,7 @@ ISR(TIMER1_COMPA_vect) {    //gets triggered FREQ times/second
   digitalWrite(MATRIXD, (matrixscan&8));
   digitalWrite(MATRIXLAT, LOW);
   shiftOut(MATRIXDI, MATRIXCLK, LSBFIRST, 255-(matrixTopData[matrixscan&15]&255));    //output row data
-  shiftOut(MATRIXDI, MATRIXCLK, LSBFIRST, 255-((matrixBottomData[matrixscan&15]>>8)&255));
+  shiftOut(MATRIXDI, MATRIXCLK, LSBFIRST, 255-(matrixBottomData[matrixscan&15]&255));
   digitalWrite(MATRIXLAT, HIGH); //latch data
   digitalWrite(MATRIXG,LOW); //unblank
 }
