@@ -2,23 +2,8 @@
 //measures distance using ultrasonic sensor
 //displays distance to serial
 
-#define HAPPY_1H  B00000000
-#define HAPPY_1G  B00000100
-#define HAPPY_1F  B01000010
-#define HAPPY_1E  B00000010
-#define HAPPY_1D  B00000010
-#define HAPPY_1C  B01000010
-#define HAPPY_1B  B00000100
-#define HAPPY_1A  B00000000
+#include "display.h"
 
-#define SAD_1H  B00000000
-#define SAD_1G  B00000010
-#define SAD_1F  B01000100
-#define SAD_1E  B00000100
-#define SAD_1D  B00000100
-#define SAD_1C  B01000100
-#define SAD_1B  B00000010
-#define SAD_1A  B00000000
 
 
 // Ultrasonic HC-SR04 unit interface
@@ -39,46 +24,10 @@
 #define MATRIXB 7       
 #define MATRIXC 8
 #define MATRIXD 9
-#define MATRIXFREQ 1L  // trigger draw every Hz/1500 cycles per second.
+#define MATRIXFREQ 1500L  // trigger draw every Hz/1500 cycles per second.
 
-//byte matrixTopData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. top row.
-
-byte matrixTopData[16]={
-HAPPY_1A,
-HAPPY_1B,
-HAPPY_1C,
-HAPPY_1D,
-HAPPY_1E,
-HAPPY_1F,
-HAPPY_1G,
-HAPPY_1H,
-SAD_1A,
-SAD_1B,
-SAD_1C,
-SAD_1D,
-SAD_1E,
-SAD_1F,
-SAD_1G,
-SAD_1H};
-
-byte matrixBottomData[16]={
-SAD_1A,
-SAD_1B,
-SAD_1C,
-SAD_1D,
-SAD_1E,
-SAD_1F,
-SAD_1G,
-SAD_1H,
-HAPPY_1A,
-HAPPY_1B,
-HAPPY_1C,
-HAPPY_1D,
-HAPPY_1E,
-HAPPY_1F,
-HAPPY_1G,
-HAPPY_1H
-};
+byte matrixTopData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. top row.
+byte matrixBottomData[16]={0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};    //for display data. bottom row.
 
 
 byte matrixscan=0;                                                //column being scanned
@@ -94,9 +43,11 @@ void loop(){
   long d;               //for distance
   d=usonic(17400)/58;   //convert ping time to distance in cm
   if(d==0){d=300;}      //sometimes returns 0 when not in range
-  debugdistance(d);  
+  debugdistance(d);
+  updatedisplay(d);
   delay(500);
 }
+
 
 
 // -----------------------------------------------------------------------------------------
@@ -118,7 +69,7 @@ void matrixsetup(){
   TCCR1A = 0;                       // 
   TCCR1B = _BV(WGM12) | _BV(CS10);  // WGM12:CTC mode (clear timer on complete), CS10:no clock scaling.
   TCNT1 = 0;                        // actual timer value init 0
-  OCR1A = F_CPU;// / MATRIXFREQ;       // F_CPU is Hz (cycles/sec)
+  OCR1A = F_CPU / MATRIXFREQ;       // F_CPU is Hz (cycles/sec)
   TIMSK1 = _BV(OCIE1A);             // enable TIMER1_COMPA_vect interrupt
 }
 
@@ -134,6 +85,86 @@ ISR(TIMER1_COMPA_vect) {    //gets triggered FREQ times/second
   shiftOut(MATRIXDI, MATRIXCLK, LSBFIRST, 255-(matrixBottomData[matrixscan&15]&255));
   digitalWrite(MATRIXLAT, HIGH); //latch data
   digitalWrite(MATRIXG,LOW); //unblank
+}
+
+
+void updatedisplay(long d)
+{
+  if (d>999)
+  {
+    memcpy(matrixTopData,&LCD8x5_F,5);
+    memcpy(matrixTopData+5,&LCD8x5_A,5);
+    memcpy(matrixTopData+10,&LCD8x5_R,5);
+  }
+  else
+  {
+    int ones = d % 10;
+    int hundreds = (d / 100);
+    int tens = (d - (100 * hundreds)) / 10;
+
+    if (hundreds == 0)
+      memcpy(matrixTopData,&LCD8x5_BLANK,5);
+    else
+      setChar8x5(matrixTopData,hundreds);
+    
+    if (hundreds == 0 && tens == 0)
+      memcpy(matrixTopData+5,&LCD8x5_BLANK,5);
+    else
+      setChar8x5(matrixTopData+5,tens);
+
+    setChar8x5(matrixTopData+10,ones);
+    
+  }
+    
+}
+
+//
+// set the 
+//
+void setChar8x5(byte* data,int digit)
+{
+  
+  switch (digit)
+  {
+    case -1:
+      memcpy(data,&LCD8x5_BLANK,5);
+      break;
+    case 0:
+      memcpy(data,&LCD8x5_0,5);
+      break;
+    case 1:
+      memcpy(data,&LCD8x5_1,5);
+      break;
+    case 2:
+      memcpy(data,&LCD8x5_2,5);
+      break;
+    case 3:
+      memcpy(data,&LCD8x5_3,5);
+      break;
+    case 4:
+      memcpy(data,&LCD8x5_4,5);
+      break;
+    case 5:
+      memcpy(data,&LCD8x5_5,5);
+      break;
+    case 6:
+      memcpy(data,&LCD8x5_6,5);
+      break;
+    case 7:
+      memcpy(data,&LCD8x5_7,5);
+      break;
+    case 8:
+      memcpy(data,&LCD8x5_8,5);
+      break;
+    case 9:
+      memcpy(data,&LCD8x5_9,5);
+      break;
+    default:
+      memcpy(data,&LCD8x5_SAD,5);
+      break;
+  }
+  
+  
 }
 
 // -----------------------------------------------------------------------------------------
