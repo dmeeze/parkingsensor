@@ -145,8 +145,6 @@ void updatedisplay_toofar(byte* row, long d)
     memset(row,0,16);
 
     long colsToShow = 12 - (d / 10);
-
-    debuglong(colsToShow);
     
     if (colsToShow > 0)
     {
