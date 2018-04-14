@@ -47,6 +47,7 @@ void loop(){
   long d;               //for distance
   d=usonic(17400)/58;   //convert ping time to distance in cm
   updatedisplay(d);
+  //debuglong(d);
   delay(500);
 }
 
